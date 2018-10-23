@@ -58,3 +58,8 @@ To install this gem onto your local machine, run `bundle exec rake install`. To 
 ## Contributing
 
 Bug reports and pull requests are welcome on GitHub at https://github.com/fiscal-cliff/sequel-bulk-audit.
+
+## You can support me financially
+
+[![paypal](https://www.paypalobjects.com/ru_RU/RU/i/btn/btn_donateCC_LG.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=6NA27M6SKZ8UJ)
+
