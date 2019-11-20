@@ -21,13 +21,10 @@ RSpec.describe Sequel::Plugins::BulkAudit do
   end
 
   before(:all) do
-    Sequel::Model.plugin :bulk_audit
-  end
-
-  before(:all) do
     class MyData < Sequel::Model(:data2)
       plugin :polymorphic
       one_to_many :audit_logs, as: :model
+      plugin :bulk_audit
     end
   end
 

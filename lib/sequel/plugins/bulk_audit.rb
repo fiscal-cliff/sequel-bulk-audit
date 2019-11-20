@@ -12,7 +12,7 @@ module Sequel
         end
 
         def model_to_table_map
-          @model_to_table_map ||= ObjectSpace.each_object(Sequel::Model.singleton_class).select do |klazz|
+          @model_to_table_map ||= ObjectSpace.each_object(Sequel::Plugins::BulkAudit::ClassMethods).select do |klazz|
             next if klazz.name.nil?
             klazz < Sequel::Model && klazz&.plugins&.include?(Sequel::Plugins::BulkAudit)
           end.map { |c| [c.to_s, c.table_name] }.to_h.invert
