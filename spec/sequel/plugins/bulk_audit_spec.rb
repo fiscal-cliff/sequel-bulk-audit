@@ -2,14 +2,7 @@ require "spec_helper"
 require 'pry'
 
 RSpec.describe Sequel::Plugins::BulkAudit do
-  before(:all) do
-    Sequel::Model.plugin :bulk_audit
-  end
-
-  before do
-    DB.tables.include?(:audit_logs) && DB[:audit_logs].truncate
-  end
-
+  let(:db) { Sequel::DATABASES.first }
   let!(:audit_model) {
     class AuditLog < Sequel::Model
       plugin :polymorphic
@@ -18,13 +11,28 @@ RSpec.describe Sequel::Plugins::BulkAudit do
   }
 
   let!(:model) do
-    Class.new(Sequel::Model(:data)) do
+    Class.new(Sequel::Model(:data1)) do
       plugin :bulk_audit
     end
   end
 
   let!(:current_user) do
     OpenStruct.new(login: 'UserLogin', id: 1)
+  end
+
+  before(:all) do
+    Sequel::Model.plugin :bulk_audit
+  end
+
+  before(:all) do
+    class MyData < Sequel::Model(:data2)
+      plugin :polymorphic
+      one_to_many :audit_logs, as: :model
+    end
+  end
+
+  before do
+    db.tables.include?(:audit_logs) && db[:audit_logs].truncate
   end
 
   it "prepares data" do
@@ -35,12 +43,13 @@ RSpec.describe Sequel::Plugins::BulkAudit do
     model.with_current_user(current_user) do
       model.create(value: 5)
     end
-    expect(DB[:audit_logs].count).to eq(1)
-    expect(DB[:audit_logs].all).to include(
+    expect(db[:audit_logs].count).to eq(1)
+    expect(db[:audit_logs].all).to include(
       a_hash_including(
         event: "INSERT",
         username: "UserLogin",
         user_type: "User",
+        model_type: 'data1',
         query: a_string_starting_with("INSERT"),
         changed: an_object_having_attributes(
           to_h: a_hash_including(
@@ -52,8 +61,8 @@ RSpec.describe Sequel::Plugins::BulkAudit do
     model.with_current_user(current_user) do
       model.last.destroy
     end
-    expect(DB[:audit_logs].count).to eq(2)
-    expect(DB[:audit_logs].all).to include(
+    expect(db[:audit_logs].count).to eq(2)
+    expect(db[:audit_logs].all).to include(
       a_hash_including(
         event: "DELETE",
         username: "UserLogin",
@@ -70,14 +79,15 @@ RSpec.describe Sequel::Plugins::BulkAudit do
 
   it "updates data" do
     model.with_current_user(current_user) do
-      model.where("1=1".lit).update(value: 'new_value')
+      model.where(Sequel.lit("1=1")).update(value: 'new_value')
     end
-    expect(DB[:audit_logs].count).to eq(6)
-    expect(DB[:audit_logs].all).to include(
+    expect(db[:audit_logs].count).to eq(6)
+    expect(db[:audit_logs].all).to include(
       a_hash_including(
         event: "UPDATE",
         username: "UserLogin",
         user_type: "User",
+        model_type: 'data1',
         query: a_string_starting_with("UPDATE"),
         changed: an_object_having_attributes(
           to_h: a_hash_including(
@@ -89,6 +99,7 @@ RSpec.describe Sequel::Plugins::BulkAudit do
         event: "UPDATE",
         username: "UserLogin",
         user_type: "User",
+        model_type: 'data1',
         query: a_string_starting_with("UPDATE"),
         changed: an_object_having_attributes(
           to_h: a_hash_including(
@@ -101,23 +112,18 @@ RSpec.describe Sequel::Plugins::BulkAudit do
 
   it "destroys data" do
     model.with_current_user(current_user) do
-      model.where("1=1".lit).delete
+      model.where(Sequel.lit("1=1")).delete
     end
-    expect(DB[:audit_logs].count).to eq(6)
+    expect(db[:audit_logs].count).to eq(6)
   end
 
   it "builds an association to audit log" do
-    class MyData < Sequel::Model(:data)
-      plugin :polymorphic
-      one_to_many :audit_logs, as: :model
-    end
-    MyData.class_variable_set(:@@model_to_table_map, nil)
     rec = model.with_current_user(current_user) do
       MyData.create(value: 5)
     end
     expect(rec).to be_instance_of(MyData)
 
-    expect(DB[:audit_logs].all).to include(
+    expect(db[:audit_logs].all).to include(
       a_hash_including(
         event: "INSERT",
         username: "UserLogin",
@@ -134,7 +140,6 @@ RSpec.describe Sequel::Plugins::BulkAudit do
     )
     expect(AuditLog.all.first.model.value).to eq("5")
     expect(AuditLog.all.first.model.id).to eq(rec.id)
-    Object.send(:remove_const, :Data)
   end
 
   it "has a version number" do
