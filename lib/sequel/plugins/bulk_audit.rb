@@ -6,6 +6,7 @@ module Sequel
     module BulkAudit
       class << self
         def apply(model, opts={})
+          @model_to_table_map = nil
           model.instance_eval do
             @excluded_columns = [*opts[:excluded_columns]]
           end

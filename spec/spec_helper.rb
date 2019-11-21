@@ -34,7 +34,7 @@ RSpec.configure do |config|
     c.syntax = :expect
   end
 
-  tables = %i[data1 data2]
+  tables = %i[data1 data2 data3]
 
   config.before(:all) do
     data = YAML.load(IO.read("spec/fixtures/data.yml"))

@@ -20,14 +20,6 @@ RSpec.describe Sequel::Plugins::BulkAudit do
     OpenStruct.new(login: 'UserLogin', id: 1)
   end
 
-  before(:all) do
-    class MyData < Sequel::Model(:data2)
-      plugin :polymorphic
-      one_to_many :audit_logs, as: :model
-      plugin :bulk_audit
-    end
-  end
-
   before do
     db.tables.include?(:audit_logs) && db[:audit_logs].truncate
   end
@@ -115,6 +107,11 @@ RSpec.describe Sequel::Plugins::BulkAudit do
   end
 
   it "builds an association to audit log" do
+    class MyData < Sequel::Model(:data2)
+      plugin :polymorphic
+      one_to_many :audit_logs, as: :model
+      plugin :bulk_audit
+    end
     rec = model.with_current_user(current_user) do
       MyData.create(value: 5)
     end
@@ -126,6 +123,36 @@ RSpec.describe Sequel::Plugins::BulkAudit do
         username: "UserLogin",
         user_type: "User",
         model_type: 'MyData',
+        model_id: rec.id.to_s,
+        query: a_string_starting_with("INSERT"),
+        changed: an_object_having_attributes(
+          to_h: a_hash_including(
+            "value" => "5"
+          )
+        )
+      )
+    )
+    expect(AuditLog.all.first.model.value).to eq("5")
+    expect(AuditLog.all.first.model.id).to eq(rec.id)
+  end
+
+  it "builds an association to audit log" do
+    Sequel::Model.plugin :bulk_audit
+    class MyData3 < Sequel::Model(:data3)
+      plugin :polymorphic
+      one_to_many :audit_logs, as: :model
+    end
+    rec = model.with_current_user(current_user) do
+      MyData3.create(value: 5)
+    end
+    expect(rec).to be_instance_of(MyData3)
+
+    expect(db[:audit_logs].all).to include(
+      a_hash_including(
+        event: "INSERT",
+        username: "UserLogin",
+        user_type: "User",
+        model_type: 'MyData3',
         model_id: rec.id.to_s,
         query: a_string_starting_with("INSERT"),
         changed: an_object_having_attributes(
