@@ -136,7 +136,7 @@ RSpec.describe Sequel::Plugins::BulkAudit do
     expect(AuditLog.all.first.model.id).to eq(rec.id)
   end
 
-  it "builds an association to audit log" do
+  it "New model uses fresh cache mapping" do
     Sequel::Model.plugin :bulk_audit
     class MyData3 < Sequel::Model(:data3)
       plugin :polymorphic
